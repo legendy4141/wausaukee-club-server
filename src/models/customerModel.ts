@@ -40,3 +40,15 @@ export const createCustomer = async (customerData: Customer): Promise<Customer> 
 
   return result.rows[0];  // Return the newly created customer
 };
+
+export const updateCustomer = async (id: string, password: string) => {
+  const result = await pool.query(
+    `UPDATE customers
+     SET password = $1
+     WHERE customer_id = $2
+     RETURNING *`,
+    [password, id]
+  );
+
+  return result.rows[0];
+};

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs'; // Import bcrypt for password hashing
 import jwt from 'jsonwebtoken'; // Import jsonwebtoken for JWT
-import { getCustomerByEmail, createCustomer } from '../models/customerModel';
+import { getCustomerByEmail, createCustomer, getCustomerById, updateCustomer } from '../models/customerModel';
 
 export const login = async (req: Request, res: Response) => {
   try {
@@ -42,9 +42,8 @@ export const login = async (req: Request, res: Response) => {
 export const register = async (req: Request, res: Response) => {
   try {
     const {
-      email, password, firstName, lastName, country, zip, city, state, address1, address2, phone
+      id, email, password, firstName, lastName, country, zip, city, state, address1, address2, phone
     } = req.body;
-
     // Check if the customer already exists
     const existingCustomer = await getCustomerByEmail(email);
 
@@ -57,7 +56,7 @@ export const register = async (req: Request, res: Response) => {
 
     // Create new customer in the database
     const newCustomer = await createCustomer({
-      customer_id: '',
+      customer_id: id,
       customer_name: `${firstName} ${lastName}`,
       address1,
       address2,
@@ -81,6 +80,37 @@ export const register = async (req: Request, res: Response) => {
     );
 
     return res.status(201).json({ message: 'Registration successful', token, customer: newCustomer });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+export const update = async (req: Request, res: Response) => {
+  try {
+    const {
+      clientId, oldPassword, newPassword
+    } = req.body;
+
+    // Check if the customer already exists
+    const customer = await getCustomerById(clientId);
+    if (!customer) {
+      return res.status(409).json({ message: 'The user is not existing on the database.' });
+    }
+
+    const isPasswordValid = await bcrypt.compare(oldPassword, customer.password);
+    
+    if (!isPasswordValid) {
+      return res.status(402).json({ message: 'Incorrect password. Please try again.' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Create new customer in the database
+    await updateCustomer(clientId, hashedPassword);
+
+    return res.status(201).json({ message: 'Password successfully updated.'});
 
   } catch (error) {
     console.error(error);
